@@ -1,6 +1,7 @@
 (() => {
   "use strict";
   const C = window.REGALO;
+  const CARTELERA = window.CARTELERA;
   const $app = document.getElementById("app");
   const KEY = "regalo-musical-v1";
   const MESES_MIN = (d) => d.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
@@ -18,13 +19,13 @@
   const pad = (n) => String(n).padStart(2, "0");
   const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-  const musical = () => C.musicales.find((m) => m.id === S.musical);
+  const musical = () => CARTELERA.find((m) => m.id === S.musical);
   const fechaLarga = (s) => parse(s).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const disponible = (d) => {
-    const s = iso(d);
-    return s >= C.desde && s <= C.hasta && C.diasSemana.includes(d.getDay()) && !C.excluir.includes(s);
-  };
-  const sesionesDe = (s) => C.sesiones[parse(s).getDay()] || [];
+  // Primer día elegible: hoy + antelación
+  const minFecha = () => { const d = new Date(); d.setDate(d.getDate() + C.antelacionDias); return iso(d); };
+  const fechasDe = (m) => Object.keys(m.sesiones).filter((f) => f >= minFecha());
+  const disponible = (d) => { const m = musical(); return !!m && m.sesiones[iso(d)] !== undefined && iso(d) >= minFecha(); };
+  const sesionesDe = (s) => musical().sesiones[s] || [];
   const grad = (m) => `linear-gradient(155deg, ${m.colores[0]}, ${m.colores[1]})`;
   const extrasElegidos = () => C.extras.filter((e) => S.extras.includes(e.id));
 
@@ -154,14 +155,14 @@
       <h2>¿Qué musical <span class="gold">te apetece?</span></h2>
       <p class="lead">Desliza y toca el que más ganas tengas de ver.</p>
       <div class="carousel" id="car">
-        ${C.musicales.map((m) => `
+        ${CARTELERA.filter((m) => fechasDe(m).length).map((m) => `
           <button class="poster ${S.musical === m.id ? "sel" : ""}" data-a="musical" data-id="${m.id}" style="background:${grad(m)}">
             <span class="check">✓</span>
             <span class="glyph">${m.glifo}</span>
             <h3>${m.titulo}</h3>
             <div class="lema">${m.lema}</div>
             <p>${m.texto}</p>
-            <div class="tags"><span>⏱ ${m.duracion}</span><span>${m.ambiente}</span></div>
+            <div class="tags"><span>📍 ${m.teatro}</span>${m.duracion ? `<span>⏱ ${m.duracion}</span>` : ""}<span>${m.ambiente}</span></div>
           </button>`).join("")}
       </div>
       <div class="footer"><button class="cta" data-a="next" ${S.musical ? "" : "disabled"}>${S.musical ? "Este es el mío" : "Elige uno"}</button></div>
@@ -173,7 +174,7 @@
     const y = first.getFullYear(), m = first.getMonth();
     const offset = (first.getDay() + 6) % 7; // semana empieza en lunes
     const dias = new Date(y, m + 1, 0).getDate();
-    const min = parse(C.desde), max = parse(C.hasta);
+    const fs = fechasDe(musical()), min = parse(fs[0]), max = parse(fs[fs.length - 1]);
     const prevOk = new Date(y, m, 0) >= new Date(min.getFullYear(), min.getMonth(), 1);
     const nextOk = new Date(y, m + 1, 1) <= max;
     let celdas = "";
@@ -189,7 +190,7 @@
       ${top(2)}
       <p class="eyebrow">Paso 2 de 3</p>
       <h2>¿Qué día <span class="gold">te viene bien?</span></h2>
-      <p class="lead">Solo están marcados los días con función.</p>
+      <p class="lead">Solo están marcados los días en que <b>${musical().titulo}</b> tiene función.</p>
       <div class="cal">
         <div class="cal-head">
           <button data-a="mes" data-n="-1" ${prevOk ? "" : "disabled"} aria-label="Mes anterior">‹</button>
@@ -213,7 +214,7 @@
       ${top(3)}
       <p class="eyebrow">Paso 3 de 3</p>
       <h2>Los <span class="gold">últimos detalles</span></h2>
-      <div class="sub">Hora de la función</div>
+      <div class="sub">Hora de la función · ${musical().titulo}</div>
       <div class="chips">
         ${ses.map((h) => `<button class="chip ${S.sesion === h ? "sel" : ""}" data-a="sesion" data-h="${h}">${h}</button>`).join("")}
       </div>
@@ -237,7 +238,7 @@
         <div class="ticket">
           <div class="ticket-top" style="background:${grad(m)}">
             <span class="glyph">${m.glifo}</span>
-            <p class="eyebrow">${C.ciudad} · ${C.personas} entradas</p>
+            <p class="eyebrow">${m.teatro} · ${C.personas} entradas</p>
             <h2>${m.titulo}</h2>
           </div>
           <div class="perf"></div>
@@ -272,7 +273,7 @@
     if (S.step !== 0) window.scrollTo(0, 0);
   }
   function startMonth() {
-    const base = S.fecha ? parse(S.fecha) : new Date(Math.max(Date.now(), parse(C.desde)));
+    const base = parse(S.fecha || fechasDe(musical())[0]);
     return new Date(base.getFullYear(), base.getMonth(), 1);
   }
   const go = (n) => { S.step = n; save(); render(); };
@@ -297,7 +298,7 @@
     const f = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
     const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RegaloMusical//ES", "BEGIN:VEVENT",
       `UID:${S.codigo}@regalo-musical`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(ini)}`, `DTEND:${f(fin)}`,
-      `SUMMARY:🎭 ${m.titulo}`, `DESCRIPTION:Regalo de ${C.de}. ${C.personas} entradas.`, `LOCATION:${C.ciudad}`,
+      `SUMMARY:🎭 ${m.titulo}`, `DESCRIPTION:Regalo de ${C.de}. ${C.personas} entradas.`, `LOCATION:${m.teatro}, ${C.ciudad}`,
       "BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:¡Mañana, musical!", "END:VALARM",
       "END:VEVENT", "END:VCALENDAR"].join("\r\n");
     const a = document.createElement("a");
@@ -316,7 +317,9 @@
     } else if (a === "back") go(S.step - 1);
     else if (a === "next") go(S.step + 1);
     else if (a === "musical") {
-      S.musical = b.dataset.id; save();
+      S.musical = b.dataset.id;
+      if (S.fecha && !(S.fecha >= minFecha() && musical().sesiones[S.fecha])) { S.fecha = null; S.sesion = null; }
+      calMes = null; save();
       document.querySelectorAll(".poster").forEach((p) => p.classList.toggle("sel", p === b));
       const cta = document.querySelector(".cta"); cta.disabled = false; cta.textContent = "Este es el mío";
     } else if (a === "pista") {

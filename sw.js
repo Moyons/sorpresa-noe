@@ -1,10 +1,11 @@
-const CACHE = "sorpresa-v2";
+const CACHE = "sorpresa-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./config.js",
+  "./cartelera.js",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-512.png",
