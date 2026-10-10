@@ -1,7 +1,7 @@
 {
-  "name": "Una noche de musical",
-  "short_name": "Musical",
-  "description": "Un regalo con mucho teatro",
+  "name": "Sorpresa para Noe",
+  "short_name": "Sorpresa",
+  "description": "Una sorpresa para ti",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

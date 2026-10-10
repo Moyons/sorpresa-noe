@@ -1,4 +1,4 @@
-const CACHE = "regalo-musical-v1";
+const CACHE = "sorpresa-v2";
 const ASSETS = [
   "./",
   "./index.html",

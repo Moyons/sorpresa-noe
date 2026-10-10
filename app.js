@@ -9,8 +9,8 @@
   const blank = { step: 0, musical: null, fecha: null, sesion: null, extras: [], codigo: null };
   let S = { ...blank };
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (_) {}
-  if (S.codigo) S.step = 4;
-  else if (S.step === 4) S.step = 3;
+  if (S.codigo) S.step = 6;
+  else if (S.step === 6) S.step = 5;
   let calMes = null; // primer día del mes visible
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
 
@@ -60,30 +60,90 @@
   // ---------- vistas ----------
   const top = (n) => `
     <div class="topbar">
-      <button class="back" data-a="back" aria-label="Volver">←</button>
+      <button class="back" data-a="back" aria-label="Volver" ${S.step === 3 ? "disabled" : ""}>←</button>
       <div class="dots">${[1, 2, 3].map((i) => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</div>
     </div>`;
 
   function vIntro() {
     return `
-    <section class="screen curtain-screen" id="intro">
-      <div class="stage-light"></div>
-      <div class="valance"></div>
-      <div class="curtain l"></div><div class="curtain r"></div>
-      <div class="curtain-hint">
-        <div class="gift-card">
-          <p class="eyebrow">Para ${C.para}</p>
-          <h1 class="gold">Tienes un regalo</h1>
-          <p class="lead">De parte de ${C.de}</p>
-          <button class="tap" data-a="open">Abrir el telón</button>
-        </div>
+    <section class="screen env-screen" id="intro">
+      <p class="eyebrow">Solo para ${C.para}</p>
+      <div class="env">
+        <div class="env-body"></div>
+        <div class="letter"><small>Para ${C.para}</small><b>Tienes una sorpresa</b></div>
+        <div class="env-front"></div>
+        <div class="env-flap"></div>
+        <button class="seal" data-a="open" aria-label="Abrir el sobre">${C.para[0]}</button>
       </div>
-      <div class="reveal">
-        <p class="eyebrow">Esta noche, función</p>
-        <h1 class="gold">Hola, ${C.para}</h1>
-        <p class="lead">${C.mensajeIntro}</p>
-      </div>
+      <p class="lead env-hint">Toca el sello para abrirlo</p>
     </section>`;
+  }
+
+  function vPistas() {
+    return `
+    <section class="screen">
+      <p class="eyebrow">De parte de ${C.de}</p>
+      <h2>Vamos con <span class="gold">unas pistas</span></h2>
+      <p class="lead">Toca las tarjetas para descubrirlas.</p>
+      <div class="clues">
+        ${C.pistas.map((t, i) => `
+          <button class="clue" data-a="pista">
+            <span class="face fr">Pista ${i + 1}<em>?</em></span>
+            <span class="face bk">${t}</span>
+          </button>`).join("")}
+      </div>
+      <div id="guess" class="guess" hidden>
+        <div class="sub">¿Qué crees que es?</div>
+        <div class="chips">
+          ${C.adivina.map((o, i) => `<button class="chip small" data-a="adivina" data-i="${i}">${o.texto}</button>`).join("")}
+        </div>
+        <p class="resp" id="resp"></p>
+      </div>
+      <div class="footer"><button class="cta" id="goRasca" data-a="next" disabled>Descúbrelo</button></div>
+    </section>`;
+  }
+
+  function vRasca() {
+    return `
+    <section class="screen">
+      <p class="eyebrow">Última prueba</p>
+      <h2>Rasca para <span class="gold">descubrirlo</span></h2>
+      <div class="scratch" id="scratch">
+        <div class="prize"><span class="big">🎭</span><b>Un musical</b><small>${C.mensajeIntro}</small></div>
+        <canvas id="foil"></canvas>
+      </div>
+      <div class="footer"><button class="cta" id="goMus" data-a="next" disabled>Rasca la tarjeta</button></div>
+    </section>`;
+  }
+
+  function initScratch() {
+    const box = document.getElementById("scratch"), cv = document.getElementById("foil");
+    if (!cv) return;
+    const r = box.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    cv.width = r.width * dpr; cv.height = r.height * dpr;
+    const ctx = cv.getContext("2d");
+    const g = ctx.createLinearGradient(0, 0, cv.width, cv.height);
+    g.addColorStop(0, "#f7dc8a"); g.addColorStop(.5, "#d9ae52"); g.addColorStop(1, "#b8862b");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = "rgba(90,10,31,.55)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `700 ${26 * dpr}px Georgia, serif`; ctx.fillText("RASCA AQUÍ", cv.width / 2, cv.height / 2 - 14 * dpr);
+    ctx.font = `${40 * dpr}px serif`; ctx.fillText("✨", cv.width / 2, cv.height / 2 + 30 * dpr);
+    ctx.globalCompositeOperation = "destination-out"; ctx.fillStyle = "#000";
+    let down = false, done = false, n = 0;
+    const scratch = (e) => {
+      const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * dpr, y = (e.clientY - b.top) * dpr;
+      ctx.beginPath(); ctx.arc(x, y, 26 * dpr, 0, 7); ctx.fill();
+      if (done || ++n % 6) return;
+      const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let clear = 0, tot = 0;
+      for (let i = 3; i < d.length; i += 160) { tot++; if (d[i] === 0) clear++; }
+      if (clear / tot > 0.45) {
+        done = true; cv.style.opacity = 0; cv.style.pointerEvents = "none"; confetti();
+        const cta = document.getElementById("goMus"); cta.disabled = false; cta.textContent = "Elegir mi musical";
+      }
+    };
+    cv.addEventListener("pointerdown", (e) => { down = true; cv.setPointerCapture(e.pointerId); scratch(e); });
+    cv.addEventListener("pointermove", (e) => { if (down) scratch(e); });
+    cv.addEventListener("pointerup", () => (down = false));
   }
 
   function vMusicales() {
@@ -202,12 +262,13 @@
 
   // ---------- render ----------
   function render() {
-    const v = [vIntro, vMusicales, () => { if (!calMes) calMes = startMonth(); return vFecha(); }, vDetalles, vEntrada][S.step];
+    const v = [vIntro, vPistas, vRasca, vMusicales, () => { if (!calMes) calMes = startMonth(); return vFecha(); }, vDetalles, vEntrada][S.step];
     const scroll = document.getElementById("car")?.scrollLeft || 0;
     $app.innerHTML = v();
     const car = document.getElementById("car");
     if (car && scroll) car.scrollLeft = scroll;
     else if (car && S.musical) car.querySelector(".sel")?.scrollIntoView({ inline: "center", block: "nearest" });
+    if (S.step === 2) initScratch();
     if (S.step !== 0) window.scrollTo(0, 0);
   }
   function startMonth() {
@@ -251,13 +312,24 @@
     const a = b.dataset.a;
     if (a === "open") {
       document.getElementById("intro").classList.add("opened");
-      setTimeout(() => go(1), 3600);
+      setTimeout(() => go(1), 2400);
     } else if (a === "back") go(S.step - 1);
     else if (a === "next") go(S.step + 1);
     else if (a === "musical") {
       S.musical = b.dataset.id; save();
       document.querySelectorAll(".poster").forEach((p) => p.classList.toggle("sel", p === b));
       const cta = document.querySelector(".cta"); cta.disabled = false; cta.textContent = "Este es el mío";
+    } else if (a === "pista") {
+      b.classList.add("flip");
+      if (document.querySelectorAll(".clue.flip").length === C.pistas.length) {
+        const g = document.getElementById("guess"); g.hidden = false;
+        setTimeout(() => g.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+      }
+    } else if (a === "adivina") {
+      const o = C.adivina[b.dataset.i];
+      document.querySelectorAll("[data-a=adivina]").forEach((c) => c.classList.toggle("sel", c === b));
+      document.getElementById("resp").textContent = o.resp;
+      const cta = document.getElementById("goRasca"); cta.disabled = false;
     } else if (a === "mes") {
       calMes = new Date(calMes.getFullYear(), calMes.getMonth() + Number(b.dataset.n), 1); render();
     } else if (a === "fecha") {
@@ -270,11 +342,11 @@
       save(); render();
     } else if (a === "confirmar") {
       S.codigo = "MUS-" + Math.random().toString(36).slice(2, 7).toUpperCase();
-      go(4); confetti();
+      go(6); confetti();
     } else if (a === "avisar") avisar();
     else if (a === "ics") ics();
     else if (a === "cambiar") {
-      if (confirm("¿Quieres elegir de nuevo?")) { S = { ...blank, step: 1 }; calMes = null; save(); render(); }
+      if (confirm("¿Quieres elegir de nuevo?")) { S = { ...blank, step: 3 }; calMes = null; save(); render(); }
     }
   });
 
