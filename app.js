@@ -61,7 +61,7 @@
   // ---------- vistas ----------
   const top = (n) => `
     <div class="topbar">
-      <button class="back" data-a="back" aria-label="Volver" ${S.step === 3 ? "disabled" : ""}>←</button>
+      <button class="back" data-a="back" aria-label="Volver">←</button>
       <div class="dots">${[1, 2, 3].map((i) => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</div>
     </div>`;
 
@@ -83,6 +83,7 @@
   function vPistas() {
     return `
     <section class="screen">
+      <div class="topbar"><button class="back" data-a="back" aria-label="Volver">←</button></div>
       <p class="eyebrow">De parte de ${C.de}</p>
       <h2>Vamos con <span class="gold">unas pistas</span></h2>
       <p class="lead">Toca las tarjetas para descubrirlas.</p>
@@ -107,6 +108,7 @@
   function vRasca() {
     return `
     <section class="screen">
+      <div class="topbar"><button class="back" data-a="back" aria-label="Volver">←</button></div>
       <p class="eyebrow">Última prueba</p>
       <h2>Rasca para <span class="gold">descubrirlo</span></h2>
       <div class="scratch" id="scratch">
@@ -256,6 +258,7 @@
         <button class="cta" data-a="avisar">Avisar a ${C.de} 💌</button>
         <button class="ghost" data-a="ics">📅 Añadir al calendario</button>
         <button class="ghost" data-a="cambiar">Cambiar mi elección</button>
+        <button class="ghost" data-a="inicio">↺ Volver al principio</button>
         <div class="install">Tip: «Añadir a pantalla de inicio» para tenerla como app.</div>
       </div>
     </section>`;
@@ -348,6 +351,7 @@
       go(6); confetti();
     } else if (a === "avisar") avisar();
     else if (a === "ics") ics();
+    else if (a === "inicio") go(0);
     else if (a === "cambiar") {
       if (confirm("¿Quieres elegir de nuevo?")) { S = { ...blank, step: 3 }; calMes = null; save(); render(); }
     }

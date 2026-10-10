@@ -6,7 +6,7 @@ window.REGALO = {
   de: "Iván",                    // quien lo regala
   ciudad: "Madrid",
   mensajeIntro: "He pensado que te mereces una noche de las que no se olvidan. Pero la elección es toda tuya.",
-  mensajeFinal: "Prepárate para emocionarte, cantar bajito y aplaudir muy fuerte. Te quiero.",
+  mensajeFinal: "Prepárate para emocionarte, cantar bajito y aplaudir muy fuerte.",
   // Número de WhatsApp de quien regala (con prefijo, sin +). Vacío = solo se podrá compartir/copiar.
   whatsapp: "",
   // Pistas del principio (no deben decir "musical" a las claras)
